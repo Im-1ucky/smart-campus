@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Campus AI Assistant</title>
+  <meta name="description" content="An AI-powered campus assistant that learns from your campus life — events, reminders, and intelligent queries." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════
+        NAVIGATION
+  ═══════════════════════════════════════════════════════ -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <div class="nav-logo">
+        <span class="logo-icon">🎓</span>
+        <span class="logo-text">CampusAI</span>
+      </div>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#home" class="nav-link active" onclick="navigate('home')">Home</a></li>
+        <li><a href="#features" class="nav-link" onclick="navigate('features')">Features</a></li>
+        <li><a href="#dashboard" class="nav-link" onclick="navigate('dashboard')">Dashboard</a></li>
+        <li><a href="#certificates" class="nav-link" onclick="navigate('certificates')">🏆 Certificates</a></li>
+        <li><a href="#" class="nav-link nav-cta" onclick="navigate('chat')">Open Chat</a></li>
+      </ul>
+      <button class="burger" id="burger" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════
+        PAGE: HOME / LANDING
+  ═══════════════════════════════════════════════════════ -->
+  <section class="page active" id="page-home">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+      </div>
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="badge-dot"></span>
+          AI-Powered Campus Life
+        </div>
+        <h1 class="hero-title">Smart Campus<br /><span class="highlight">AI Assistant</span></h1>
+        <p class="hero-tagline">An AI that learns from your campus life — events, reminders, navigation, and intelligent campus queries, all in one place.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="startChatBtn" onclick="navigate('chat')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Start Chat
+          </button>
+          <button class="btn btn-secondary" onclick="navigate('features')">
+            Explore Features
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat">
+            <span class="stat-number">500+</span>
+            <span class="stat-label">Students Helped</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-number">98%</span>
+            <span class="stat-label">Accuracy</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-number">24/7</span>
+            <span class="stat-label">Available</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="chat-preview-card">
+          <div class="preview-header">
+            <div class="preview-avatar ai-avatar">🤖</div>
+            <div>
+              <p class="preview-name">Campus AI</p>
+              <p class="preview-status"><span class="online-dot"></span> Online</p>
+            </div>
+          </div>
+          <div class="preview-messages">
+            <div class="preview-msg ai-msg">
+              <p>Good morning! Your Operating Systems lecture starts in 20 minutes in Block B — Room 204. 📚</p>
+            </div>
+            <div class="preview-msg user-msg">
+              <p>Any events this week?</p>
+            </div>
+            <div class="preview-msg ai-msg typing-preview">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Features Strip on Landing -->
+    <div class="landing-strips">
+      <div class="strip-card" onclick="navigate('features')">
+        <div class="strip-icon">🗓️</div>
+        <div>
+          <h4>Event Recommendations</h4>
+          <p>Personalized campus events</p>
+        </div>
+      </div>
+      <div class="strip-card" onclick="navigate('features')">
+        <div class="strip-icon">⏰</div>
+        <div>
+          <h4>Smart Reminders</h4>
+          <p>Never miss a deadline</p>
+        </div>
+      </div>
+      <div class="strip-card" onclick="navigate('features')">
+        <div class="strip-icon">🗺️</div>
+        <div>
+          <h4>Campus Navigation</h4>
+          <p>Find any room instantly</p>
+        </div>
+      </div>
+      <div class="strip-card" onclick="navigate('features')">
+        <div class="strip-icon">🧠</div>
+        <div>
+          <h4>Memory AI</h4>
+          <p>Learns your preferences</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+        PAGE: CHAT
+  ═══════════════════════════════════════════════════════ -->
+  <section class="page" id="page-chat">
+    <div class="chat-layout">
+      <!-- Sidebar -->
+      <aside class="chat-sidebar" id="chatSidebar">
+        <div class="sidebar-header">
+          <h3>Conversations</h3>
+          <button class="btn-icon" onclick="clearChat()" title="New Chat">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <div class="sidebar-sessions">
+          <div class="session-item active" onclick="activateSession(this)">
+            <div class="session-icon">💬</div>
+            <div class="session-info">
+              <p class="session-title">Campus Help</p>
+              <p class="session-preview">Ask me anything…</p>
+            </div>
+          </div>
+          <div class="session-item" onclick="activateSession(this)">
+            <div class="session-icon">🗓️</div>
+            <div class="session-info">
+              <p class="session-title">Event Queries</p>
+              <p class="session-preview">Tech Fest registrations</p>
+            </div>
+          </div>
+          <div class="session-item" onclick="activateSession(this)">
+            <div class="session-icon">📌</div>
+            <div class="session-info">
+              <p class="session-title">My Reminders</p>
+              <p class="session-preview">Exam tomorrow at 9am</p>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-quick-actions">
+          <p class="sidebar-section-title">Quick Ask</p>
+          <button class="quick-chip" onclick="injectQuickMessage('What events are happening this week?')">📅 This week's events</button>
+          <button class="quick-chip" onclick="injectQuickMessage('Set a reminder for my exam tomorrow at 9 AM.')">⏰ Set reminder</button>
+          <button class="quick-chip" onclick="injectQuickMessage('Where is the library?')">🗺️ Find library</button>
+          <button class="quick-chip" onclick="injectQuickMessage('What is the exam schedule?')">📋 Exam schedule</button>
+          <button class="quick-chip" onclick="injectQuickMessage('Show me my certificates and achievements.')">🏆 My certificates</button>
+          <button class="quick-chip" onclick="injectQuickMessage('I like coding and AI.')">🧠 Build my profile</button>
+        </div>
+      </aside>
+
+      <!-- Main Chat Area -->
+      <div class="chat-main">
+        <div class="chat-header">
+          <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="chat-header-info">
+            <div class="chat-avatar">🤖</div>
+            <div>
+              <p class="chat-header-name">Campus AI Assistant</p>
+              <p class="chat-header-status"><span class="online-dot"></span> Learning from you…</p>
+            </div>
+          </div>
+          <div class="chat-header-actions">
+            <button class="btn-icon" onclick="clearChat()" title="Clear chat">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+          <!-- Welcome message injected by JS -->
+        </div>
+
+        <div class="chat-input-area">
+          <div class="input-wrapper">
+            <textarea
+              id="userInput"
+              class="chat-input"
+              placeholder="Ask me about events, reminders, campus navigation…"
+              rows="1"
+              onkeydown="handleKeyDown(event)"
+              oninput="autoResize(this)"
+            ></textarea>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send message">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+          <p class="input-disclaimer">Campus AI may produce inaccurate information. Always verify with official sources.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+        PAGE: FEATURES
+  ═══════════════════════════════════════════════════════ -->
+  <section class="page" id="page-features">
+    <div class="page-container">
+      <div class="page-header">
+        <span class="page-badge">What We Offer</span>
+        <h2 class="page-title">Intelligent Campus Features</h2>
+        <p class="page-subtitle">Everything you need to navigate your academic journey, powered by AI that remembers and learns.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card featured">
+          <div class="feature-icon-wrap" style="--icon-bg: #dbeafe; --icon-color: #2563eb;">
+            <span class="feature-icon">🗓️</span>
+          </div>
+          <h3>Personalized Event Recommendations</h3>
+          <p>Campus AI curates events specifically for you — based on your department, interests, and past activity. Never miss a hackathon, workshop, or seminar again.</p>
+          <ul class="feature-list">
+            <li>✓ Department-specific events</li>
+            <li>✓ Interest-based filtering</li>
+            <li>✓ Registration reminders</li>
+          </ul>
+          <button class="feature-try-btn" onclick="navigate('chat'); injectQuickMessage('What campus events are recommended for me this week?')">Try Now →</button>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap" style="--icon-bg: #dcfce7; --icon-color: #16a34a;">
+            <span class="feature-icon">⏰</span>
+          </div>
+          <h3>Smart Reminders</h3>
+          <p>Set intelligent reminders for exams, assignments, club meetings, and college deadlines through natural language — just like texting a friend.</p>
+          <ul class="feature-list">
+            <li>✓ Natural language input</li>
+            <li>✓ Exam &amp; deadline alerts</li>
+            <li>✓ Club &amp; society reminders</li>
+          </ul>
+          <button class="feature-try-btn" onclick="navigate('chat'); injectQuickMessage('Remind me about my physics exam tomorrow at 9 AM.')">Try Now →</button>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap" style="--icon-bg: #fef3c7; --icon-color: #d97706;">
+            <span class="feature-icon">🗺️</span>
+          </div>
+          <h3>Campus Navigation Help</h3>
+          <p>Get instant directions to classrooms, labs, departments, canteens, and facilities anywhere on campus — no more wandering between blocks.</p>
+          <ul class="feature-list">
+            <li>✓ Block &amp; room locator</li>
+            <li>✓ Facility directions</li>
+            <li>✓ Office hours info</li>
+          </ul>
+          <button class="feature-try-btn" onclick="navigate('chat'); injectQuickMessage('Where is the Computer Science department?')">Try Now →</button>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap" style="--icon-bg: #ede9fe; --icon-color: #7c3aed;">
+            <span class="feature-icon">🧠</span>
+          </div>
+          <h3>Learning from Past Interactions</h3>
+          <p>Campus AI remembers your history, preferences, and patterns to provide smarter, more personalized responses every time you interact.</p>
+          <ul class="feature-list">
+            <li>✓ Session memory</li>
+            <li>✓ Preference learning</li>
+            <li>✓ Smarter over time</li>
+          </ul>
+          <button class="feature-try-btn" onclick="navigate('chat'); injectQuickMessage('What do you remember about my schedule?')">Try Now →</button>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap" style="--icon-bg: #ffe4e6; --icon-color: #e11d48;">
+            <span class="feature-icon">📚</span>
+          </div>
+          <h3>Academic Query Support</h3>
+          <p>Ask any campus-related academic question — exam timetables, syllabus queries, faculty contact, and course information instantly.</p>
+          <ul class="feature-list">
+            <li>✓ Timetable lookup</li>
+            <li>✓ Syllabus help</li>
+            <li>✓ Faculty directory</li>
+          </ul>
+          <button class="feature-try-btn" onclick="navigate('chat'); injectQuickMessage('What is the exam schedule for this semester?')">Try Now →</button>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap" style="--icon-bg: #e0f2fe; --icon-color: #0369a1;">
+            <span class="feature-icon">📊</span>
+          </div>
+          <h3>Personal Dashboard</h3>
+          <p>Track your activities, upcoming events, and active reminders through a clean dashboard designed for students on the go.</p>
+          <ul class="feature-list">
+            <li>✓ Activity tracking</li>
+            <li>✓ Event overview</li>
+            <li>✓ Reminder summary</li>
+          </ul>
+          <button class="feature-try-btn" onclick="navigate('dashboard')">View Dashboard →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+        PAGE: DASHBOARD
+  ═══════════════════════════════════════════════════════ -->
+  <section class="page" id="page-dashboard">
+    <div class="page-container">
+      <div class="page-header">
+        <span class="page-badge">Your Space</span>
+        <h2 class="page-title">Student Dashboard</h2>
+        <p class="page-subtitle">A snapshot of your campus activity, upcoming events, and active reminders.</p>
+      </div>
+
+      <div class="dashboard-grid">
+
+        <!-- Welcome Banner -->
+        <div class="dash-banner">
+          <div class="banner-content">
+            <div class="banner-avatar">👤</div>
+            <div>
+              <h3>Good afternoon, Student!</h3>
+              <p>You have <strong>2 upcoming events</strong> and <strong>3 active reminders</strong> today.</p>
+            </div>
+          </div>
+          <div class="banner-quick">
+            <button class="btn btn-primary sm" onclick="navigate('chat')">Open Chat</button>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3>Recent Activity</h3>
+            <span class="badge-count" id="activityCount">0</span>
+          </div>
+          <div class="activity-list" id="activityList">
+            <div class="activity-empty">
+              <p>No activity yet. <a href="#" onclick="navigate('chat')">Start chatting</a> to see your history here.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recommended Events -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3>Recommended Events</h3>
+            <button class="btn-text" onclick="navigate('chat'); injectQuickMessage('Show me all campus events.')">See all</button>
+          </div>
+          <div class="events-list">
+            <div class="event-item">
+              <div class="event-badge" style="background:#dbeafe; color:#1d4ed8;">Tech</div>
+              <div class="event-info">
+                <p class="event-title">National Hackathon 2026</p>
+                <p class="event-meta">📅 March 22, 2026 &nbsp;·&nbsp; 🏛️ Main Auditorium</p>
+              </div>
+              <button class="event-register" onclick="navigate('chat'); injectQuickMessage('Tell me more about the National Hackathon 2026.')">Details</button>
+            </div>
+            <div class="event-item">
+              <div class="event-badge" style="background:#dcfce7; color:#15803d;">Workshop</div>
+              <div class="event-info">
+                <p class="event-title">AI & ML Workshop</p>
+                <p class="event-meta">📅 March 24, 2026 &nbsp;·&nbsp; 🏛️ Lab Block C</p>
+              </div>
+              <button class="event-register" onclick="navigate('chat'); injectQuickMessage('How do I register for the AI ML Workshop?')">Details</button>
+            </div>
+            <div class="event-item">
+              <div class="event-badge" style="background:#fef3c7; color:#b45309;">Cultural</div>
+              <div class="event-info">
+                <p class="event-title">Annual Cultural Fest – SANGAM</p>
+                <p class="event-meta">📅 March 28–30, 2026 &nbsp;·&nbsp; 🏛️ Open Grounds</p>
+              </div>
+              <button class="event-register" onclick="navigate('chat'); injectQuickMessage('What events are there in SANGAM cultural fest?')">Details</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Reminders -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3>Active Reminders</h3>
+            <button class="btn-text" onclick="navigate('chat'); injectQuickMessage('Show me all my reminders.')">Manage</button>
+          </div>
+          <div class="reminders-list" id="remindersList">
+            <div class="reminder-item">
+              <div class="reminder-indicator" style="background:#ef4444;"></div>
+              <div class="reminder-info">
+                <p class="reminder-title">Physics Exam</p>
+                <p class="reminder-time">Tomorrow · 9:00 AM · Hall A</p>
+              </div>
+              <span class="reminder-tag urgent">Urgent</span>
+            </div>
+            <div class="reminder-item">
+              <div class="reminder-indicator" style="background:#f59e0b;"></div>
+              <div class="reminder-info">
+                <p class="reminder-title">Project Submission – DSA</p>
+                <p class="reminder-time">March 21, 2026 · 11:59 PM</p>
+              </div>
+              <span class="reminder-tag medium">Soon</span>
+            </div>
+            <div class="reminder-item">
+              <div class="reminder-indicator" style="background:#3b82f6;"></div>
+              <div class="reminder-info">
+                <p class="reminder-title">Hackathon Registration</p>
+                <p class="reminder-time">March 20, 2026 · 5:00 PM</p>
+              </div>
+              <span class="reminder-tag low">Upcoming</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-card dash-stats">
+          <div class="dash-card-header">
+            <h3>AI Memory Stats</h3>
+          </div>
+          <div class="stats-row">
+            <div class="stat-box">
+              <span class="stat-box-num" id="msgStat">0</span>
+              <span class="stat-box-label">Messages Sent</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-box-num" id="reminderStat">0</span>
+              <span class="stat-box-label">Reminders Set</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-box-num">3</span>
+              <span class="stat-box-label">Certificates</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-box-num" id="sessionStat">1</span>
+              <span class="stat-box-label">Sessions</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+        PAGE: CERTIFICATES
+  ═══════════════════════════════════════════════════════ -->
+  <section class="page" id="page-certificates">
+    <div class="page-container">
+      <div class="page-header">
+        <span class="page-badge">Your Achievements</span>
+        <h2 class="page-title">Certificates & Awards</h2>
+        <p class="page-subtitle">A record of your campus achievements, participations, and completions.</p>
+      </div>
+      <div class="certificates-grid">
+
+        <div class="cert-card">
+          <div class="cert-card-header" style="background:linear-gradient(135deg,#2563eb,#1e40af)">
+            <span class="cert-card-icon">🚀</span>
+            <span class="cert-card-type">Participation</span>
+          </div>
+          <div class="cert-card-body">
+            <h3>National Hackathon 2026</h3>
+            <p>HackWithBangalore · March 22, 2026</p>
+            <p class="cert-card-status">✅ Verified</p>
+          </div>
+          <div class="cert-card-actions">
+            <button class="cert-view-btn" onclick="viewCertificate('hackathon')">👁 View</button>
+            <button class="cert-dl-btn" onclick="downloadCertificate('National Hackathon 2026')">⬇ Download</button>
+          </div>
+        </div>
+
+        <div class="cert-card">
+          <div class="cert-card-header" style="background:linear-gradient(135deg,#7c3aed,#5b21b6)">
+            <span class="cert-card-icon">🤖</span>
+            <span class="cert-card-type">Completion</span>
+          </div>
+          <div class="cert-card-body">
+            <h3>AI &amp; ML Workshop</h3>
+            <p>CS Department · March 24, 2026</p>
+            <p class="cert-card-status">✅ Verified</p>
+          </div>
+          <div class="cert-card-actions">
+            <button class="cert-view-btn" onclick="viewCertificate('aiworkshop')">👁 View</button>
+            <button class="cert-dl-btn" onclick="downloadCertificate('AI & ML Workshop')">⬇ Download</button>
+          </div>
+        </div>
+
+        <div class="cert-card">
+          <div class="cert-card-header" style="background:linear-gradient(135deg,#059669,#065f46)">
+            <span class="cert-card-icon">💻</span>
+            <span class="cert-card-type">Runner-Up</span>
+          </div>
+          <div class="cert-card-body">
+            <h3>Coding Marathon 2026</h3>
+            <p>Tech Club · February 15, 2026</p>
+            <p class="cert-card-status">✅ Verified</p>
+          </div>
+          <div class="cert-card-actions">
+            <button class="cert-view-btn" onclick="viewCertificate('coding')">👁 View</button>
+            <button class="cert-dl-btn" onclick="downloadCertificate('Coding Marathon 2026')">⬇ Download</button>
+          </div>
+        </div>
+
+        <div class="cert-card cert-upcoming">
+          <div class="cert-card-header" style="background:linear-gradient(135deg,#64748b,#475569)">
+            <span class="cert-card-icon">🔒</span>
+            <span class="cert-card-type">Upcoming</span>
+          </div>
+          <div class="cert-card-body">
+            <h3>SANGAM Cultural Fest</h3>
+            <p>All Departments · March 28–30, 2026</p>
+            <p class="cert-card-status">⏳ Event Pending</p>
+          </div>
+          <div class="cert-card-actions">
+            <button class="cert-view-btn" disabled style="opacity:.4;cursor:not-allowed">🔒 Locked</button>
+            <button class="cert-dl-btn" onclick="setEventReminder('SANGAM Cultural Fest','March 28, 2026')">⏰ Remind Me</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+        MAP MODAL
+  ═══════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="mapModal">
+    <div class="modal-box map-modal-box">
+      <div class="modal-header">
+        <h3 id="mapModalTitle">📍 Campus Location</h3>
+        <button class="modal-close" onclick="closeMapModal()">✕</button>
+      </div>
+      <div class="map-container">
+        <iframe
+          id="mapFrame"
+          src=""
+          width="100%"
+          height="350"
+          frameborder="0"
+          scrolling="no"
+          marginheight="0"
+          marginwidth="0"
+          title="Campus Map"
+          loading="lazy"
+          allowfullscreen
+        ></iframe>
+      </div>
+      <div class="map-modal-footer">
+        <p>📍 Smart Campus, Bangalore, Karnataka 560001</p>
+        <a href="https://maps.google.com/?q=Bangalore+India" target="_blank" class="map-open-btn">Open in Google Maps ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+        CERTIFICATE VIEWER MODAL
+  ═══════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="certModal">
+    <div class="modal-box cert-modal-box">
+      <div class="modal-header">
+        <h3>🏆 Certificate Preview</h3>
+        <button class="modal-close" onclick="closeCertModal()">✕</button>
+      </div>
+      <div id="certPreview"></div>
+      <div class="cert-modal-footer">
+        <button class="cert-dl-btn-lg" onclick="downloadCertificate('certificate')">⬇ Download Certificate</button>
+      </div>
+    </div>
+  </div>
+  <footer class="footer" id="mainFooter">
+    <div class="footer-container">
+      <div class="footer-left">
+        <div class="nav-logo" style="margin-bottom:8px;">
+          <span class="logo-icon">🎓</span>
+          <span class="logo-text">CampusAI</span>
+        </div>
+        <p>Smart Campus AI Assistant — built for students, by students.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#" onclick="navigate('home')">Home</a>
+        <a href="#" onclick="navigate('features')">Features</a>
+        <a href="#" onclick="navigate('dashboard')">Dashboard</a>
+        <a href="#" onclick="navigate('chat')">Chat</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Smart Campus AI Assistant · HackWithBangalore Project</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
