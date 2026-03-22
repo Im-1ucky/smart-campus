@@ -19,12 +19,16 @@ const state = {
   totalMessages: 0,
   sessions: 1,
   isTyping: false,
+  // Image upload state
+  pendingImage: null,    // { file, dataUrl }
   // Frontend memory — tracks user interests from conversation
   memory: {
     topics: [],          // e.g. ['coding', 'hackathon', 'AI']
     lastEvent: null,     // last event the user asked about
     reminders: [],       // set reminders
     name: null,          // if user mentions their name
+    clubs: [],           // joined clubs
+    eventsAttended: [],  // past events attended
   },
 };
 
@@ -77,11 +81,20 @@ function buildMemoryPersonalisation() {
    SMART FALLBACK AI  (no backend needed — feels like real AI)
 ═══════════════════════════════════════════════════════════ */
 const CAMPUS_EVENTS = [
-  { name: 'National Hackathon 2026', date: 'March 22, 2026', type: 'Tech', venue: 'Main Auditorium', prize: '₹1,00,000', mapQuery: 'Main+Auditorium+campus' },
-  { name: 'AI & ML Workshop',        date: 'March 24, 2026', type: 'Workshop', venue: 'Lab Block C, Room 101', facilitator: 'Dr. Priya Sharma', mapQuery: 'Lab+Block+C+campus' },
-  { name: 'SANGAM Cultural Fest',    date: 'March 28–30, 2026', type: 'Cultural', venue: 'Open Grounds & Main Stage', mapQuery: 'Open+Grounds+campus' },
-  { name: 'Robotics Competition',    date: 'April 2, 2026', type: 'Tech', venue: 'Engineering Block', mapQuery: 'Engineering+Block+campus' },
-  { name: 'Photography Contest',     date: 'April 5, 2026', type: 'Cultural', venue: 'Art Gallery, Block E', mapQuery: 'Art+Gallery+campus' },
+  { name: 'National Hackathon 2026', date: 'March 22, 2026', type: 'Tech', venue: 'Main Auditorium', prize: '₹1,00,000', mapQuery: 'Main+Auditorium+campus',
+    keywords: ['hackathon', 'hack', 'national', 'coding', 'code', 'competition', 'team', 'prize', 'web3', 'iot', 'social impact'], icon: '🚀' },
+  { name: 'AI & ML Workshop', date: 'March 24, 2026', type: 'Workshop', venue: 'Lab Block C, Room 101', facilitator: 'Dr. Priya Sharma', mapQuery: 'Lab+Block+C+campus',
+    keywords: ['ai', 'ml', 'artificial intelligence', 'machine learning', 'workshop', 'neural', 'tensorflow', 'deep learning', 'computer vision'], icon: '🤖' },
+  { name: 'SANGAM Cultural Fest', date: 'March 28–30, 2026', type: 'Cultural', venue: 'Open Grounds & Main Stage', mapQuery: 'Open+Grounds+campus',
+    keywords: ['sangam', 'cultural', 'fest', 'dance', 'music', 'drama', 'fashion', 'art', 'photography'], icon: '🎭' },
+  { name: 'Robotics Competition', date: 'April 2, 2026', type: 'Tech', venue: 'Engineering Block', mapQuery: 'Engineering+Block+campus',
+    keywords: ['robotics', 'robot', 'competition', 'engineering', 'hardware', 'arduino', 'circuit'], icon: '🤖' },
+  { name: 'Photography Contest', date: 'April 5, 2026', type: 'Cultural', venue: 'Art Gallery, Block E', mapQuery: 'Art+Gallery+campus',
+    keywords: ['photography', 'photo', 'contest', 'camera', 'gallery', 'creative', 'art'], icon: '📸' },
+  { name: 'Coding Marathon 2026', date: 'February 15, 2026', type: 'Tech', venue: 'CS Lab, Block B', mapQuery: 'Block+B+campus',
+    keywords: ['coding', 'marathon', 'code', 'programming', 'dsa', 'algorithm', 'competitive'], icon: '💻' },
+  { name: 'IQnition — Ignite Your Intellect', date: 'February 11, 2026', type: 'Quiz', venue: 'CSM Block', time: '2:00 PM – 5:00 PM', organizer: 'Training & Placement Club, GPREC Kurnool', mapQuery: 'CSM+Block+GPREC+Kurnool',
+    keywords: ['iqnition', 'ignition', 'ignite', 'intellect', 'quiz', 'gprec', 'pulla reddy', 'kurnool', 'training', 'placement', 'csm'], icon: '🧠' },
 ];
 
 function getSmartFallbackResponse(userText) {
@@ -180,17 +193,242 @@ function getSmartFallbackResponse(userText) {
       : '🎭 **SANGAM Cultural Fest** — March 28–30 · Performances, art & music\n📸 **Photography Contest** — April 5 · Showcase your creativity'}\n\nShall I set a reminder for any of these?`;
   }
 
-  // Default — smart general response with memory context
-  const prefix = buildMemoryPersonalisation();
-  const suggestions = state.memory.topics.length > 0
-    ? `Since you're interested in **${state.memory.topics[0]}**, you might want to check out upcoming **${state.memory.topics.includes('coding') || state.memory.topics.includes('hackathon') ? 'tech events and hackathons' : 'campus events'}** this month!`
-    : 'Here\'s what I can help you with today:';
-
   return `I'm here to help! 🎓\n\n${prefix ? prefix + suggestions : suggestions}\n\n• 📅 **Events** — personalized recommendations\n• 🗺️ **Navigation** — find any campus location\n• ⏰ **Reminders** — never miss a deadline\n• 📋 **Exam schedules** — full timetable info\n• 🏆 **Certificates** — view your achievements\n• 🧠 **Memory** — I learn from our conversations\n\nTry: *"What events are this week?"* or *"I like coding"*`;
 }
 
+// Override renderMessage to support buttons for joining/attending (conceptual improvement)
+// For now, I'll just add simple text triggers or enhance the fallback return strings
+// Actually, let's just make the fallback strings more interactive with "Click to join" hints.
+
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/* ═══════════════════════════════════════════════════════════
+   IMAGE UPLOAD & OCR — EVENT POSTER RECOGNITION
+═══════════════════════════════════════════════════════════ */
+
+function handleImageSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('⚠️ Please select an image file.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    state.pendingImage = { file, dataUrl: ev.target.result };
+    // Show preview
+    document.getElementById('imgPreviewThumb').src = ev.target.result;
+    document.getElementById('imgPreviewName').textContent = file.name;
+    document.getElementById('imgPreviewStrip').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  // Reset input so same file can be re-selected
+  e.target.value = '';
+}
+
+function removeImagePreview() {
+  state.pendingImage = null;
+  document.getElementById('imgPreviewStrip').style.display = 'none';
+  document.getElementById('imgPreviewThumb').src = '';
+}
+
+function matchEventFromText(ocrText) {
+  const text = ocrText.toLowerCase();
+  const words = text.split(/\s+/);
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const event of CAMPUS_EVENTS) {
+    let score = 0;
+    // Check event name words
+    const nameWords = event.name.toLowerCase().split(/\s+/);
+    for (const nw of nameWords) {
+      if (nw.length > 2 && text.includes(nw)) score += 3;
+    }
+    // Check keywords
+    for (const kw of event.keywords) {
+      if (text.includes(kw)) score += 2;
+    }
+    // Check venue
+    const venueWords = event.venue.toLowerCase().split(/[\s,]+/);
+    for (const vw of venueWords) {
+      if (vw.length > 2 && text.includes(vw)) score += 1;
+    }
+    // Check date
+    if (event.date && text.includes(event.date.toLowerCase().split(',')[0].toLowerCase())) score += 2;
+    // Check type
+    if (text.includes(event.type.toLowerCase())) score += 1;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = event;
+    }
+  }
+  // Require a minimum score to consider it a match
+  return bestScore >= 4 ? { event: bestMatch, score: bestScore } : null;
+}
+
+function renderEventMatchCard(event) {
+  return `
+    <div class="event-match-card">
+      <div class="event-match-header">
+        <div class="event-match-icon">${event.icon || '📅'}</div>
+        <div>
+          <div class="event-match-title">${event.name}</div>
+        </div>
+        <span class="event-match-type">${event.type}</span>
+      </div>
+      <div class="event-match-details">
+        <span>📅 <strong>Date:</strong> ${event.date}</span>
+        <span>📍 <strong>Venue:</strong> ${event.venue}</span>
+        ${event.prize ? `<span>🏆 <strong>Prize:</strong> ${event.prize}</span>` : ''}
+        ${event.facilitator ? `<span>👨‍🏫 <strong>Facilitator:</strong> ${event.facilitator}</span>` : ''}
+      </div>
+      <div class="event-match-actions">
+        <button class="ematch-primary" onclick="navigate('chat'); injectQuickMessage('Tell me more about ${event.name}.')">💬 More Details</button>
+        <button class="ematch-secondary" onclick="setEventReminder('${event.name}', '${event.date}')">⏰ Set Reminder</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderImageMessage(dataUrl, fileName) {
+  const container = document.getElementById('chatMessages');
+  const now = new Date();
+  const row = document.createElement('div');
+  row.className = 'message-row user';
+  row.innerHTML = `
+    <div class="msg-avatar usr">S</div>
+    <div class="msg-body" style="align-items:flex-end;">
+      <img src="${dataUrl}" alt="${escapeHtml(fileName)}" class="msg-image" />
+      <div class="msg-bubble user-bubble">📸 Uploaded poster for event recognition</div>
+      <span class="msg-time">${formatTime(now)}</span>
+    </div>
+  `;
+  container.appendChild(row);
+  scrollToBottom();
+  return now;
+}
+
+function showOCRLoading() {
+  const container = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = 'typing-row';
+  el.id = 'ocrLoading';
+  el.innerHTML = `
+    <div class="msg-avatar ai">🤖</div>
+    <div class="ocr-loading">
+      <div class="ocr-spinner"></div>
+      <span class="ocr-loading-text">Scanning poster text…</span>
+    </div>
+  `;
+  container.appendChild(el);
+  scrollToBottom();
+}
+
+function removeOCRLoading() {
+  const el = document.getElementById('ocrLoading');
+  if (el) el.remove();
+}
+
+async function processImageOCR(imageData) {
+  showOCRLoading();
+  try {
+    const result = await Tesseract.recognize(imageData, 'eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const pct = Math.round((m.progress || 0) * 100);
+          const loadingText = document.querySelector('.ocr-loading-text');
+          if (loadingText) loadingText.textContent = `Scanning poster text… ${pct}%`;
+        }
+      }
+    });
+    removeOCRLoading();
+    const extractedText = result.data.text.trim();
+    return extractedText;
+  } catch (err) {
+    removeOCRLoading();
+    console.error('OCR Error:', err);
+    return null;
+  }
+}
+
+function renderOCRResult(extractedText, matchResult) {
+  const container = document.getElementById('chatMessages');
+  const now = new Date();
+  const row = document.createElement('div');
+  row.className = 'message-row';
+
+  let content;
+  if (matchResult) {
+    content = `<div class="msg-bubble ai-bubble">
+      <strong>✅ Event Identified!</strong><br/>
+      I scanned the poster and found a match:
+    </div>
+    ${renderEventMatchCard(matchResult.event)}`;
+    state.memory.lastEvent = matchResult.event.name;
+    addActivity('📸', `Identified event: ${matchResult.event.name}`, now);
+  } else if (extractedText) {
+    content = `<div class="msg-bubble ai-bubble">
+      <strong>🔍 Poster Scanned</strong><br/><br/>
+      I extracted text from the poster but couldn't match it to a known campus event.<br/><br/>
+      <strong>Extracted text:</strong><br/>
+      <em>"${escapeHtml(extractedText.substring(0, 300))}${extractedText.length > 300 ? '…' : ''}"</em><br/><br/>
+      Try uploading a clearer image, or ask me about the event by name!
+    </div>`;
+    addActivity('📸', 'Poster scanned — no event match', now);
+  } else {
+    content = `<div class="msg-bubble ai-bubble">
+      <strong>⚠️ Couldn't Read Poster</strong><br/><br/>
+      I wasn't able to extract text from this image. Please try:<br/>
+      • A clearer or higher-resolution image<br/>
+      • A poster with visible text<br/>
+      • Taking a photo with better lighting
+    </div>`;
+    addActivity('📸', 'Poster scan failed — no text found', now);
+  }
+
+  row.innerHTML = `
+    <div class="msg-avatar ai">🤖</div>
+    <div class="msg-body">
+      ${content}
+      <span class="msg-time">${formatTime(now)}</span>
+    </div>
+  `;
+  container.appendChild(row);
+  scrollToBottom();
+  state.messages.push({ role: 'ai', text: extractedText ? `Scanned poster: ${extractedText.substring(0, 100)}` : 'Poster scan failed', time: now });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   THEME TOGGLE
+═══════════════════════════════════════════════════════════ */
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  const newTheme = isDark ? 'light' : 'dark';
+
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+
+  // Sync icons
+  updateThemeUI(newTheme);
+}
+
+function updateThemeUI(theme) {
+  const iconLight = document.querySelector('.theme-icon-light');
+  const iconDark = document.querySelector('.theme-icon-dark');
+  if (!iconLight || !iconDark) return;
+
+  if (theme === 'dark') {
+    iconLight.style.display = 'none';
+    iconDark.style.display = 'inline';
+  } else {
+    iconLight.style.display = 'inline';
+    iconDark.style.display = 'none';
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -270,8 +508,32 @@ function setEventReminder(eventName, eventDate) {
     state.memory.reminders.push(eventName);
   }
   addActivity('⏰', `Reminder set for ${eventName}`, new Date());
-  updateStats();
+  refreshDashboard(); 
   showToast(`⏰ Reminder set for ${eventName} — ${eventDate}`);
+  
+  // If it's a past event, also add to attended list
+  if (getEventStatus(eventDate) === 'past') {
+    addEventAttended(eventName);
+  }
+}
+
+function joinClub(clubName) {
+  if (!state.memory.clubs.includes(clubName)) {
+    state.memory.clubs.push(clubName);
+    addActivity('💎', `Joined ${clubName} club`, new Date());
+    refreshDashboard();
+    showToast(`🎉 You have joined the ${clubName}!`);
+  } else {
+    showToast(`ℹ️ You are already a member of ${clubName}.`);
+  }
+}
+
+function addEventAttended(eventName) {
+  if (!state.memory.eventsAttended.includes(eventName)) {
+    state.memory.eventsAttended.push(eventName);
+    addActivity('✅', `Attended ${eventName}`, new Date());
+    refreshDashboard();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -310,6 +572,15 @@ function navigate(page) {
   document.getElementById('navLinks').classList.remove('open');
 
   if (page === 'dashboard') refreshDashboard();
+  if (page === 'events') renderEventsWall();
+}
+
+function refreshDashboard() {
+  updateStats();
+  renderActivityList();
+  renderReminders();
+  renderClubs();
+  renderEventsAttended();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -322,14 +593,7 @@ function toggleMobileMenu() {
 /* ═══════════════════════════════════════════════════════════
    CHAT SIDEBAR
 ═══════════════════════════════════════════════════════════ */
-function toggleSidebar() {
-  document.getElementById('chatSidebar').classList.toggle('open');
-}
-
-function activateSession(el) {
-  document.querySelectorAll('.session-item').forEach(s => s.classList.remove('active'));
-  el.classList.add('active');
-}
+/* CHAT SIDEBAR FUNCTIONS REMOVED */
 
 /* ═══════════════════════════════════════════════════════════
    CHAT FUNCTIONS
@@ -397,22 +661,50 @@ async function sendMessage() {
   if (state.isTyping) return;
   const input = document.getElementById('userInput');
   const text = input.value.trim();
-  if (!text) return;
+  const hasImage = !!state.pendingImage;
+
+  // Need either text or image
+  if (!text && !hasImage) return;
 
   const now = new Date();
+  state.isTyping = true;
+  document.getElementById('sendBtn').disabled = true;
 
+  // ── Handle image upload + OCR ─────────────────────────
+  if (hasImage) {
+    const imgData = state.pendingImage;
+    removeImagePreview();
+    input.value = '';
+    input.style.height = 'auto';
+
+    // Show the image in chat
+    renderImageMessage(imgData.dataUrl, imgData.file.name);
+    state.totalMessages++;
+    addActivity('📸', `Uploaded poster: ${imgData.file.name}`, now);
+
+    // Run OCR
+    const extractedText = await processImageOCR(imgData.dataUrl);
+    const matchResult = extractedText ? matchEventFromText(extractedText) : null;
+    renderOCRResult(extractedText, matchResult);
+
+    state.isTyping = false;
+    document.getElementById('sendBtn').disabled = false;
+    updateStats();
+    return;
+  }
+
+  // ── Normal text message flow ──────────────────────────
   // Update frontend memory FIRST
   updateMemory(text);
 
   state.messages.push({ role: 'user', text, time: now });
   state.totalMessages++;
   renderMessage('user', text, now);
-  addActivity('💬', `You asked: "${text.length > 40 ? text.slice(0, 40) + '…' : text}"`, now);
+  // No longer logging user questions to Recent Activity
+  // addActivity('💬', `You asked: "${text.length > 40 ? text.slice(0, 40) + '…' : text}"`, now);
 
   input.value = '';
   input.style.height = 'auto';
-  state.isTyping = true;
-  document.getElementById('sendBtn').disabled = true;
   showTypingIndicator();
 
   let aiText;
@@ -443,7 +735,8 @@ async function sendMessage() {
   removeTypingIndicator();
   state.messages.push({ role: 'ai', text: aiText, time: aiTime });
   renderMessage('ai', aiText, aiTime);
-  addActivity('🤖', `AI responded to your query`, aiTime);
+  // No longer logging chat responses to Recent Activity to keep it genuine
+  // addActivity('🤖', `AI responded to your query`, aiTime);
 
   state.isTyping = false;
   document.getElementById('sendBtn').disabled = false;
@@ -466,7 +759,8 @@ function clearChat() {
   state.messages = [];
   state.sessions++;
   document.getElementById('chatMessages').innerHTML = '';
-  addActivity('🔄', 'New chat session started', new Date());
+  // No longer logging new sessions to Recent Activity
+  // addActivity('🔄', 'New chat session started', new Date());
   updateStats();
   injectWelcomeMessage();
 }
@@ -498,8 +792,12 @@ function injectWelcomeMessage() {
    DASHBOARD
 ═══════════════════════════════════════════════════════════ */
 function addActivity(icon, text, time) {
+  // Only log meaningful changes (reminders, clubs, events)
+  const meaningfulIcons = ['⏰', '🗓️', '💎', '🎓', '✅'];
+  if (!meaningfulIcons.includes(icon)) return;
+
   state.activities.unshift({ icon, text, time });
-  if (state.activities.length > 10) state.activities.pop();
+  if (state.activities.length > 15) state.activities.pop();
 }
 
 function refreshDashboard() {
@@ -508,14 +806,18 @@ function refreshDashboard() {
 }
 
 function updateStats() {
-  const msgEl   = document.getElementById('msgStat');
-  const sessEl  = document.getElementById('sessionStat');
   const cntEl   = document.getElementById('activityCount');
-  const remEl   = document.getElementById('reminderStat');
-  if (msgEl)  msgEl.textContent  = state.totalMessages;
-  if (sessEl) sessEl.textContent = state.sessions;
   if (cntEl)  cntEl.textContent  = state.activities.length;
-  if (remEl)  remEl.textContent  = state.memory.reminders.length;
+
+  const welcomeEl = document.getElementById('dashWelcomeMsg');
+  if (welcomeEl) {
+    const remCount = state.memory.reminders.length;
+    if (remCount === 0) {
+      welcomeEl.textContent = "Welcome to your personalized campus space. Start chatting to set reminders!";
+    } else {
+      welcomeEl.innerHTML = `You have <strong>${remCount} active reminder${remCount > 1 ? 's' : ''}</strong> today.`;
+    }
+  }
 }
 
 function renderActivityList() {
@@ -534,6 +836,222 @@ function renderActivityList() {
   `).join('');
 }
 
+function renderClubs() {
+  const listEl = document.getElementById('clubsList');
+  if (!listEl) return;
+  if (state.memory.clubs.length === 0) {
+    listEl.innerHTML = `<div class="activity-empty"><p>No clubs joined yet. <a href="#" onclick="navigate('chat'); injectQuickMessage('Show me clubs I can join.')">Explore Clubs</a></p></div>`;
+    return;
+  }
+  listEl.innerHTML = state.memory.clubs.map(c => `
+    <div class="event-item">
+      <div class="event-badge" style="background:var(--blue-100); color:var(--blue-700);">Member</div>
+      <div class="event-info">
+        <p class="event-title">${escapeHtml(c)}</p>
+        <p class="event-meta">Joined: 2026</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderEventsAttended() {
+  const listEl = document.getElementById('eventsAttendedList');
+  if (!listEl) return;
+  if (state.memory.eventsAttended.length === 0) {
+    listEl.innerHTML = `<div class="activity-empty"><p>No events attended yet. <a href="#" onclick="navigate('events')">Browse Wall</a></p></div>`;
+    return;
+  }
+  listEl.innerHTML = state.memory.eventsAttended.map(e => `
+    <div class="event-item">
+      <div class="event-badge" style="background:var(--green-100); color:var(--green-700);">Attended</div>
+      <div class="event-info">
+        <p class="event-title">${escapeHtml(e)}</p>
+        <p class="event-meta">📅 Past Event</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderReminders() {
+  const listEl = document.getElementById('remindersList');
+  if (!listEl) return;
+  if (state.memory.reminders.length === 0) {
+    listEl.innerHTML = `<div class="activity-empty"><p>No active reminders. <a href="#" onclick="navigate('chat')">Set one now</a></p></div>`;
+    return;
+  }
+  listEl.innerHTML = state.memory.reminders.map(r => `
+    <div class="reminder-item">
+      <div class="reminder-indicator" style="background:var(--blue-500);"></div>
+      <div class="reminder-info">
+        <p class="reminder-title">${escapeHtml(r)}</p>
+        <p class="reminder-time">Scheduled via Assistant</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EVENTS WALL
+═══════════════════════════════════════════════════════════ */
+const EVENT_TYPE_COLORS = {
+  Tech:     { bg: 'var(--blue-100)', color: 'var(--blue-700)', iconBg: 'var(--blue-50)' },
+  Workshop: { bg: 'var(--green-100, #dcfce7)', color: 'var(--green-700, #15803d)', iconBg: 'var(--green-50, #f0fdf4)' },
+  Cultural: { bg: 'var(--orange-100, #fef3c7)', color: 'var(--orange-700, #b45309)', iconBg: 'var(--orange-50, #fffbeb)' },
+  Quiz:     { bg: 'var(--purple-100, #ede9fe)', color: 'var(--purple-700, #7c3aed)', iconBg: 'var(--purple-50, #f5f3ff)' },
+};
+
+function getEventStatus(dateStr) {
+  // Simple check: does the date string contain a month that's before "now"?
+  // For demo purposes, hardcode today as March 21, 2026
+  const pastDates = ['january', 'february']; // months already passed
+  const d = dateStr.toLowerCase();
+  for (const m of pastDates) {
+    if (d.includes(m)) return 'past';
+  }
+  return 'upcoming';
+}
+
+function renderEventsWall(filter = 'all') {
+  const grid = document.getElementById('eventsWallGrid');
+  if (!grid) return;
+
+  const events = filter === 'all'
+    ? CAMPUS_EVENTS
+    : CAMPUS_EVENTS.filter(e => e.type === filter);
+
+  if (events.length === 0) {
+    grid.innerHTML = `<div class="activity-empty" style="grid-column:1/-1;"><p>No events found for this category.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = events.map((e, i) => {
+    const tc = EVENT_TYPE_COLORS[e.type] || EVENT_TYPE_COLORS.Tech;
+    const status = getEventStatus(e.date);
+    const statusClass = status === 'past' ? 'ew-status-past' : 'ew-status-upcoming';
+    const statusLabel = status === 'past' ? '✓ Completed' : '📅 Upcoming';
+    const idx = CAMPUS_EVENTS.indexOf(e);
+
+    return `
+      <div class="ew-card" onclick="openEventDetail(${idx})">
+        <div class="ew-card-header">
+          <div class="ew-card-icon" style="background:${tc.iconBg};">${e.icon || '📅'}</div>
+          <div class="ew-card-header-info">
+            <div class="ew-card-title">${e.name}</div>
+            <span class="ew-card-type" style="background:${tc.bg};color:${tc.color};">${e.type}</span>
+          </div>
+        </div>
+        <div class="ew-card-body">
+          <div class="ew-card-detail">📅 <strong>${e.date}</strong></div>
+          <div class="ew-card-detail">📍 ${e.venue}</div>
+          ${e.time ? `<div class="ew-card-detail">⏰ ${e.time}</div>` : ''}
+          ${e.prize ? `<div class="ew-card-detail">🏆 Prize: ${e.prize}</div>` : ''}
+        </div>
+        <div class="ew-card-footer">
+          <span class="ew-card-status ${statusClass}">${statusLabel}</span>
+          <button class="ew-card-expand">View Details →</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterEvents(type) {
+  // Update active filter button
+  document.querySelectorAll('.ew-filter-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  renderEventsWall(type);
+}
+
+function openEventDetail(idx) {
+  const e = CAMPUS_EVENTS[idx];
+  if (!e) return;
+  const tc = EVENT_TYPE_COLORS[e.type] || EVENT_TYPE_COLORS.Tech;
+  const status = getEventStatus(e.date);
+
+  // Header color based on type
+  const header = document.getElementById('eventDetailHeader');
+  const typeGradients = {
+    Tech: 'linear-gradient(135deg,#2563eb,#1e40af)',
+    Workshop: 'linear-gradient(135deg,#059669,#065f46)',
+    Cultural: 'linear-gradient(135deg,#d97706,#b45309)',
+    Quiz: 'linear-gradient(135deg,#7c3aed,#5b21b6)',
+  };
+  header.style.background = typeGradients[e.type] || typeGradients.Tech;
+  document.getElementById('eventDetailTitle').textContent = `${e.icon || '📅'} ${e.name}`;
+
+  // Body
+  const body = document.getElementById('eventDetailBody');
+  body.innerHTML = `
+    <div class="ed-icon-row">
+      <div class="ed-big-icon" style="background:${tc.iconBg};">${e.icon || '📅'}</div>
+      <div>
+        <div class="ed-event-name">${e.name}</div>
+        <span class="ed-event-type" style="background:${tc.bg};color:${tc.color};">${e.type}</span>
+      </div>
+    </div>
+    <div class="ed-details-grid">
+      <div class="ed-detail-item">
+        <div class="ed-detail-label">Date</div>
+        <div class="ed-detail-value">📅 ${e.date}</div>
+      </div>
+      <div class="ed-detail-item">
+        <div class="ed-detail-label">Venue</div>
+        <div class="ed-detail-value">📍 ${e.venue}</div>
+      </div>
+      ${e.time ? `<div class="ed-detail-item">
+        <div class="ed-detail-label">Time</div>
+        <div class="ed-detail-value">⏰ ${e.time}</div>
+      </div>` : ''}
+      ${e.prize ? `<div class="ed-detail-item">
+        <div class="ed-detail-label">Prize Pool</div>
+        <div class="ed-detail-value">🏆 ${e.prize}</div>
+      </div>` : ''}
+      ${e.facilitator ? `<div class="ed-detail-item">
+        <div class="ed-detail-label">Facilitator</div>
+        <div class="ed-detail-value">👨‍🏫 ${e.facilitator}</div>
+      </div>` : ''}
+      ${e.organizer ? `<div class="ed-detail-item">
+        <div class="ed-detail-label">Organizer</div>
+        <div class="ed-detail-value">🏛️ ${e.organizer}</div>
+      </div>` : ''}
+    </div>
+    <div class="ed-description">
+      <strong>Keywords:</strong> ${(e.keywords || []).map(k => `<span style="background:${tc.bg};color:${tc.color};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;margin:2px;display:inline-block;">${k}</span>`).join(' ')}
+    </div>
+  `;
+
+  // Footer — actions with Watch Live button
+  const footer = document.getElementById('eventDetailFooter');
+  footer.innerHTML = `
+    <button class="ed-btn ed-btn-live" onclick="watchLiveEvent('${e.name}')">
+      <span class="ew-live-dot"></span> Watch Live
+    </button>
+    <button class="ed-btn ed-btn-primary" onclick="setEventReminder('${e.name}', '${e.date}'); closeEventDetailModal();">
+      ⏰ Set Reminder
+    </button>
+    <button class="ed-btn ed-btn-secondary" onclick="closeEventDetailModal(); navigate('chat'); injectQuickMessage('Tell me more about ${e.name}.');">
+      💬 Ask AI
+    </button>
+  `;
+
+  // Show modal
+  document.getElementById('eventDetailModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEventDetailModal() {
+  document.getElementById('eventDetailModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function watchLiveEvent(eventName) {
+  // Simulated live stream — in production, this would link to an actual stream URL
+  showToast(`🔴 Checking live stream for "${eventName}"…`);
+  setTimeout(() => {
+    showToast(`📡 No live stream available right now for "${eventName}". Check back during the event!`);
+  }, 2000);
+}
+
 /* ═══════════════════════════════════════════════════════════
    NAVBAR SCROLL EFFECT
 ═══════════════════════════════════════════════════════════ */
@@ -547,23 +1065,25 @@ window.addEventListener('scroll', () => {
 ═══════════════════════════════════════════════════════════ */
 window.addEventListener('click', (e) => {
   if (e.target.id === 'mapModal')  closeMapModal();
-  if (e.target.id === 'certModal') closeCertModal();
+  if (e.target.id === 'eventDetailModal') closeEventDetailModal();
 });
 
 /* ═══════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  navigate('home');
+  navigate('chat');
   injectWelcomeMessage();
 
-  const baseTime = new Date();
-  addActivity('🎓', 'Smart Campus AI Assistant started', baseTime);
-  addActivity('🗓️', 'National Hackathon 2026 — March 22', baseTime);
-  addActivity('⏰', 'Reminder: Physics Exam tomorrow at 9 AM', baseTime);
-
-  updateStats();
+  // No mock activities added initially
+  refreshDashboard();
   renderActivityList();
+  renderEventsWall();
+
+  // Determine current theme for UI sync
+  const currentTheme = document.documentElement.getAttribute('data-theme') ||
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  updateThemeUI(currentTheme);
 
   console.log('%cSmart Campus AI Assistant', 'font-size:16px;font-weight:bold;color:#2563eb;');
   console.log('%cMemory AI ready · Backend optional', 'color:#64748b;');
