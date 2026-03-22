@@ -44,3 +44,25 @@ async def chat(req: ChatRequest):
     """
     response = get_ai_response(req.message, req.user_id)
     return {"response": response}
+
+class MemoryState(BaseModel):
+    user_id: str
+    state: dict
+
+@app.post("/memory")
+async def save_memory(req: MemoryState):
+    from services.memory_service import save_user_state
+    save_user_state(req.user_id, req.state)
+    return {"status": "saved"}
+
+@app.get("/memory/{user_id}")
+async def get_memory(user_id: str):
+    from services.memory_service import get_user_state
+    state = get_user_state(user_id)
+    return {"state": state}
+
+@app.get("/history/{user_id}")
+async def get_chat_history(user_id: str):
+    from services.memory_service import get_history
+    history = get_history(user_id)
+    return {"history": history}

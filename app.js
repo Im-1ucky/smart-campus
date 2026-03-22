@@ -9,6 +9,41 @@
 const BACKEND_URL = 'http://127.0.0.1:8000';
 const USER_ID = 'user123';
 
+async function initSession() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/memory/${USER_ID}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.state && Object.keys(data.state).length > 0) {
+        state.memory = { ...state.memory, ...data.state };
+      }
+    }
+    const histRes = await fetch(`${BACKEND_URL}/history/${USER_ID}`);
+    if (histRes.ok) {
+      const histData = await histRes.json();
+      if (histData.history && histData.history.length > 0) {
+        state.messages = histData.history.map(m => ({
+          role: m.role,
+          text: m.content || m.text,
+          time: new Date()
+        }));
+      }
+    }
+  } catch(e) { console.log('Backend memory/history not available'); }
+  refreshDashboard();
+}
+
+async function pushProfileToDB() {
+  try {
+    await fetch(`${BACKEND_URL}/memory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: USER_ID, state: state.memory })
+    });
+  } catch(e) {}
+}
+
+
 /* ═══════════════════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════════════════ */
@@ -38,8 +73,12 @@ const state = {
 ═══════════════════════════════════════════════════════════ */
 function updateMemory(text) {
   const t = text.toLowerCase();
+  let changed = false;
   const addTopic = (topic) => {
-    if (!state.memory.topics.includes(topic)) state.memory.topics.push(topic);
+    if (!state.memory.topics.includes(topic)) {
+      state.memory.topics.push(topic);
+      changed = true;
+    }
   };
   if (/coding|code|program|developer|software/.test(t))  addTopic('coding');
   if (/hackathon|hacking|hack/.test(t))                  addTopic('hackathon');
@@ -52,13 +91,22 @@ function updateMemory(text) {
 
   // Extract name: "my name is X" or "I am X"
   const nameMatch = text.match(/(?:my name is|i am|i'm)\s+([A-Z][a-z]+)/i);
-  if (nameMatch) state.memory.name = nameMatch[1];
+  if (nameMatch && state.memory.name !== nameMatch[1]) {
+    state.memory.name = nameMatch[1];
+    changed = true;
+  }
 
   // Track last event mentioned
+  const oldEvent = state.memory.lastEvent;
   if (/hackathon/i.test(t))       state.memory.lastEvent = 'National Hackathon 2026';
   else if (/workshop|ai.*ml/i.test(t))  state.memory.lastEvent = 'AI & ML Workshop';
   else if (/sangam|cultural/i.test(t))  state.memory.lastEvent = 'SANGAM Cultural Fest';
+  
+  if (state.memory.lastEvent !== oldEvent) changed = true;
+  
+  if (changed) pushProfileToDB();
 }
+
 
 function getMemoryContext() {
   const { topics, lastEvent, name } = state.memory;
@@ -112,19 +160,39 @@ function getSmartFallbackResponse(userText) {
   // Events & Recommendations
   if (/\b(event|events|fest|activity|activities|happening|this week|upcoming|recommend)\b/.test(t)) {
     const prefix = buildMemoryPersonalisation();
-    const relevant = state.memory.topics.includes('coding') || state.memory.topics.includes('hackathon') || state.memory.topics.includes('artificial intelligence')
-      ? [CAMPUS_EVENTS[0], CAMPUS_EVENTS[1]]
-      : state.memory.topics.includes('cultural activities')
-      ? [CAMPUS_EVENTS[2], CAMPUS_EVENTS[4]]
-      : CAMPUS_EVENTS.slice(0, 3);
-    const list = relevant.map(e => `📅 **${e.name}** — ${e.date}\n    📍 ${e.venue} · *${e.type}*`).join('\n\n');
-    return `${prefix}here are the top upcoming campus events:\n\n${list}\n\nWould you like to set a reminder or view the location for any of these?`;
+    // Filter for future events (mocked for March 22, 2026 onwards)
+    const upcoming = CAMPUS_EVENTS.filter(e => {
+      if (e.name.includes('SANGAM') || e.name.includes('Hackathon') || e.name.includes('Workshop') || e.name.includes('Robotics') || e.name.includes('Photography')) return true;
+      return false;
+    });
+    const list = upcoming.map(e => `📅 **${e.name}** — ${e.date}\n    📍 ${e.venue} · *${e.type}*`).join('\n\n');
+    return `${prefix}here are the upcoming campus events you can still register for:\n\n${list}\n\nWould you like to set a reminder for any of these?`;
   }
 
   // Reminder
   if (/\b(remind|reminder|alert|notify|don.t forget)\b/.test(t)) {
+    if (t.includes('show') || t.includes('active') || t.includes('list')) {
+      const list = state.memory.reminders.length > 0
+        ? state.memory.reminders.map(r => `• ${r}`).join('\n')
+        : '_No active reminders yet._';
+      return `⏰ **Your Active Reminders:**\n\n${list}\n\nI can also set a reminder for your **Exam tomorrow at 9 AM** if you'd like. Shall I do that?`;
+    }
+    
+    if (t.includes('exam') && t.includes('9')) {
+      if (!state.memory.reminders.includes('Semester Exam (9 AM)')) {
+        state.memory.reminders.push('Semester Exam (9 AM)');
+        pushProfileToDB();
+      }
+      addActivity('⏰', 'Set reminder for Semester Exam (9 AM)', new Date());
+      return `✅ **Reminder set!** I'll notify you for your **Semester Exam at 9 AM**. Good luck! ✍️`;
+    }
+
     const event = state.memory.lastEvent || 'the event';
-    state.memory.reminders.push(event);
+    if (!state.memory.reminders.includes(event)) {
+      state.memory.reminders.push(event);
+      addActivity('⏰', `Reminder set for ${event}`, new Date());
+      pushProfileToDB();
+    }
     return `✅ **Reminder set!** I'll make sure you don't miss **${event}**.\n\nYour active reminders (${state.memory.reminders.length}):\n${state.memory.reminders.map(r => `• ${r}`).join('\n')}\n\nAnything else you'd like me to track?`;
   }
 
@@ -165,13 +233,14 @@ function getSmartFallbackResponse(userText) {
     return `🏆 **Your Campus Achievements**\n\nI found the following certificates in your profile:\n\n🥇 **HackWithBangalore 2026** — Participation Certificate\n🥈 **AI & ML Workshop** — Completion Certificate\n🏅 **Coding Marathon** — Runner-Up Certificate\n\nClick **"View Certificates"** in the navigation to view and download them!\n\nWould you like to know about upcoming competitions to earn more?`;
   }
 
-  // Memory / what do you know about me
+  // Memory / Profile / what do you know about me
   if (/\b(remember|memory|know about me|past|history|learned|profile|preferences)\b/.test(t)) {
+    const { name, topics, lastEvent, reminders, clubs, eventsAttended } = state.memory;
     const ctx = getMemoryContext();
-    if (ctx) {
-      return `🧠 **Here's what I've learned about you:**\n\n${state.memory.name ? `• 👤 Name: **${state.memory.name}**\n` : ''}${state.memory.topics.length > 0 ? `• 💡 Interests: **${state.memory.topics.join(', ')}**\n` : ''}${state.memory.lastEvent ? `• 📅 Last event explored: **${state.memory.lastEvent}**\n` : ''}${state.memory.reminders.length > 0 ? `• ⏰ Active reminders: **${state.memory.reminders.length}**\n` : ''}\nThe more we chat, the better I understand you! ✨`;
+    if (ctx || clubs.length > 0 || eventsAttended.length > 0) {
+      return `🧠 **Student Profile Summary:**\n\n${name ? `• 👤 Name: **${name}**\n` : ''}${topics.length > 0 ? `• 💡 Interests: **${topics.join(', ')}**\n` : ''}${clubs.length > 0 ? `• 💎 Clubs: **${clubs.join(', ')}**\n` : ''}${eventsAttended.length > 0 ? `• ✅ Attended: **${eventsAttended.join(', ')}**\n` : ''}${lastEvent ? `• 📅 Last explored: **${lastEvent}**\n` : ''}${reminders.length > 0 ? `• ⏰ Active reminders: **${reminders.length}**\n` : ''}\nYou're quite active on campus! Is there anything specific from your profile you'd like to update?`;
     }
-    return `🧠 **Memory & Personalization**\n\nI'm still learning about you! As you chat more, I'll remember:\n\n• 💡 Your interests & preferred event types\n• 📅 Events you've asked about\n• ⏰ Reminders you've set\n• 🎓 Your academic preferences\n\nTry telling me something like *"I like coding"* or *"I'm interested in AI"* and I'll personalise my recommendations!`;
+    return `🧠 **Memory & Personalization**\n\nI'm still learning about you! Tell me about your interests or join some clubs to build your profile.\n\nTry: *"I like coding"* or *"Show me clubs I can join"*`;
   }
 
   // Canteen / food
@@ -188,6 +257,7 @@ function getSmartFallbackResponse(userText) {
   if (/i (like|love|enjoy|am interested in)\s+(coding|programming|tech|ai|design|music|sports)/i.test(t)) {
     updateMemory(t);
     const ctx = buildMemoryPersonalisation();
+    addActivity('🎓', `Interest updated: ${state.memory.topics[state.memory.topics.length - 1]}`, new Date());
     return `That's great! 🎉 I've noted that you're into **${state.memory.topics[state.memory.topics.length - 1]}**.\n\n${ctx}here are some events you'd love:\n\n${state.memory.topics.some(x => ['coding','hackathon','artificial intelligence'].includes(x))
       ? '🚀 **National Hackathon 2026** — March 22 · Perfect for tech enthusiasts\n🤖 **AI & ML Workshop** — March 24 · Hands-on neural networks & TensorFlow'
       : '🎭 **SANGAM Cultural Fest** — March 28–30 · Performances, art & music\n📸 **Photography Contest** — April 5 · Showcase your creativity'}\n\nShall I set a reminder for any of these?`;
@@ -294,16 +364,22 @@ function renderEventMatchCard(event) {
   `;
 }
 
-function renderImageMessage(dataUrl, fileName) {
+function renderImageMessage(dataUrl, fileName, text) {
   const container = document.getElementById('chatMessages');
   const now = new Date();
   const row = document.createElement('div');
   row.className = 'message-row user';
+  
+  let textHtml = '';
+  if (text) {
+    textHtml = `<div class="msg-bubble user-bubble">${escapeHtml(text)}</div>`;
+  }
+
   row.innerHTML = `
     <div class="msg-avatar usr">S</div>
     <div class="msg-body" style="align-items:flex-end;">
       <img src="${dataUrl}" alt="${escapeHtml(fileName)}" class="msg-image" />
-      <div class="msg-bubble user-bubble">📸 Uploaded poster for event recognition</div>
+      ${textHtml}
       <span class="msg-time">${formatTime(now)}</span>
     </div>
   `;
@@ -364,19 +440,14 @@ function renderOCRResult(extractedText, matchResult) {
   let content;
   if (matchResult) {
     content = `<div class="msg-bubble ai-bubble">
-      <strong>✅ Event Identified!</strong><br/>
-      I scanned the poster and found a match:
+      The poster you uploaded is about **${matchResult.event.name}**! Here are the event details:
     </div>
     ${renderEventMatchCard(matchResult.event)}`;
     state.memory.lastEvent = matchResult.event.name;
     addActivity('📸', `Identified event: ${matchResult.event.name}`, now);
   } else if (extractedText) {
     content = `<div class="msg-bubble ai-bubble">
-      <strong>🔍 Poster Scanned</strong><br/><br/>
-      I extracted text from the poster but couldn't match it to a known campus event.<br/><br/>
-      <strong>Extracted text:</strong><br/>
-      <em>"${escapeHtml(extractedText.substring(0, 300))}${extractedText.length > 300 ? '…' : ''}"</em><br/><br/>
-      Try uploading a clearer image, or ask me about the event by name!
+      I couldn't recognize this poster as a campus event. It might be an outside event, or perhaps you could try uploading a clearer image?
     </div>`;
     addActivity('📸', 'Poster scanned — no event match', now);
   } else {
@@ -504,17 +575,17 @@ function downloadCertificate(name) {
    REMINDER (Event-specific)
 ═══════════════════════════════════════════════════════════ */
 function setEventReminder(eventName, eventDate) {
+  if (getEventStatus(eventDate) === 'past') {
+    showToast(`⚠️ Cannot set reminder for a past event (${eventName}).`);
+    return;
+  }
+
   if (!state.memory.reminders.includes(eventName)) {
     state.memory.reminders.push(eventName);
   }
   addActivity('⏰', `Reminder set for ${eventName}`, new Date());
   refreshDashboard(); 
   showToast(`⏰ Reminder set for ${eventName} — ${eventDate}`);
-  
-  // If it's a past event, also add to attended list
-  if (getEventStatus(eventDate) === 'past') {
-    addEventAttended(eventName);
-  }
 }
 
 function joinClub(clubName) {
@@ -673,12 +744,13 @@ async function sendMessage() {
   // ── Handle image upload + OCR ─────────────────────────
   if (hasImage) {
     const imgData = state.pendingImage;
+    const userText = text; // Capture original text
     removeImagePreview();
     input.value = '';
     input.style.height = 'auto';
 
     // Show the image in chat
-    renderImageMessage(imgData.dataUrl, imgData.file.name);
+    renderImageMessage(imgData.dataUrl, imgData.file.name, userText);
     state.totalMessages++;
     addActivity('📸', `Uploaded poster: ${imgData.file.name}`, now);
 
@@ -740,7 +812,7 @@ async function sendMessage() {
 
   state.isTyping = false;
   document.getElementById('sendBtn').disabled = false;
-  updateStats();
+  refreshDashboard();
 }
 
 function handleKeyDown(event) {
@@ -783,7 +855,7 @@ function injectWelcomeMessage() {
   const personalised = state.memory.topics.length > 0
     ? `\n\nBased on your interests in **${state.memory.topics.slice(0, 2).join(' & ')}**, I'll show you personalised recommendations.`
     : '';
-  const welcomeText = `Hello${name}! 👋 I'm your **Smart Campus AI Assistant**.\n\nI can help you with:\n• 📅 Campus **Events & Recommendations**\n• ⏰ **Smart Reminders** — never miss a deadline\n• 🗺️ **Campus Navigation** — find any room or facility\n• 📋 **Exam Schedules & Academic Info**\n• 🏆 **Certificates** — view your achievements\n• 🧠 **Memory AI** — I learn from our conversations${personalised}\n\nTry: *"What events are happening this week?"* or click a quick topic on the left!`;
+  const welcomeText = `Hello${name}! 👋 I'm your **Smart Campus AI Assistant**.\n\nI can help you with:\n• 📅 Campus **Events & Recommendations**\n• ⏰ **Smart Reminders** — never miss a deadline\n• 🧠 **Campus AI Profile** — I learn from our conversations & track your activities${personalised}\n\nTry: *"Show me upcoming events"* or click a suggestion below!`;
   state.messages.push({ role: 'ai', text: welcomeText, time: now });
   renderMessage('ai', welcomeText, now);
 }
@@ -800,10 +872,6 @@ function addActivity(icon, text, time) {
   if (state.activities.length > 15) state.activities.pop();
 }
 
-function refreshDashboard() {
-  updateStats();
-  renderActivityList();
-}
 
 function updateStats() {
   const cntEl   = document.getElementById('activityCount');
@@ -1016,19 +1084,20 @@ function openEventDetail(idx) {
       </div>` : ''}
     </div>
     <div class="ed-description">
-      <strong>Keywords:</strong> ${(e.keywords || []).map(k => `<span style="background:${tc.bg};color:${tc.color};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;margin:2px;display:inline-block;">${k}</span>`).join(' ')}
+      <strong>Keywords:</strong> ${(e.keywords || []).map(k => `<span class="ed-keyword-tag" style="background:${tc.bg};color:${tc.color};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;margin:2px;display:inline-block;">${k}</span>`).join(' ')}
     </div>
   `;
 
   // Footer — actions with Watch Live button
   const footer = document.getElementById('eventDetailFooter');
   footer.innerHTML = `
-    <button class="ed-btn ed-btn-live" onclick="watchLiveEvent('${e.name}')">
+    <button class="ed-btn ed-btn-primary" onclick="watchLiveEvent('${e.name}')">
       <span class="ew-live-dot"></span> Watch Live
     </button>
-    <button class="ed-btn ed-btn-primary" onclick="setEventReminder('${e.name}', '${e.date}'); closeEventDetailModal();">
-      ⏰ Set Reminder
-    </button>
+    ${status === 'past' 
+      ? `<button class="ed-btn ed-btn-primary" onclick="addEventAttended('${e.name}'); closeEventDetailModal();">✅ Mark as Attended</button>`
+      : `<button class="ed-btn ed-btn-primary" onclick="setEventReminder('${e.name}', '${e.date}'); closeEventDetailModal();">⏰ Set Reminder</button>`
+    }
     <button class="ed-btn ed-btn-secondary" onclick="closeEventDetailModal(); navigate('chat'); injectQuickMessage('Tell me more about ${e.name}.');">
       💬 Ask AI
     </button>
@@ -1072,18 +1141,32 @@ window.addEventListener('click', (e) => {
    INIT
 ═══════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  navigate('chat');
-  injectWelcomeMessage();
-
-  // No mock activities added initially
-  refreshDashboard();
-  renderActivityList();
-  renderEventsWall();
+  initSession().then(() => {
+    navigate('chat');
+    if (state.messages.length === 0) {
+      injectWelcomeMessage();
+    } else {
+      state.messages.forEach(m => renderMessage(m.role, m.text, m.time || new Date()));
+    }
+    refreshDashboard();
+    renderActivityList();
+    renderEventsWall();
+  });
 
   // Determine current theme for UI sync
   const currentTheme = document.documentElement.getAttribute('data-theme') ||
     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   updateThemeUI(currentTheme);
+
+  // Click anywhere in input wrapper to focus the textarea
+  const inputWrapper = document.querySelector('.input-wrapper');
+  if (inputWrapper) {
+    inputWrapper.addEventListener('click', (e) => {
+      if (e.target.closest('button') || e.target.closest('input[type="file"]')) return;
+      const textarea = document.getElementById('userInput');
+      if (textarea) textarea.focus();
+    });
+  }
 
   console.log('%cSmart Campus AI Assistant', 'font-size:16px;font-weight:bold;color:#2563eb;');
   console.log('%cMemory AI ready · Backend optional', 'color:#64748b;');
